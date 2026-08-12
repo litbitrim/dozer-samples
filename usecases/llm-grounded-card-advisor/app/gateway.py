@@ -44,19 +44,19 @@ class FixtureGateway:
         self.data_dir = Path(data_dir)
 
     def get_customer_features(self, customer_id: str) -> CustomerFeatures:
-        customers = {row["customer_id"]: row for row in _read_csv(self.data_dir / "customers.csv")}
+        customers = {row["customer_id"]: row for row in _read_csv(self.data_dir / "customers" / "customers.csv")}
         customer = customers.get(customer_id)
         if customer is None:
             raise CustomerNotFoundError(customer_id)
 
         active_accounts = [
             row
-            for row in _read_csv(self.data_dir / "accounts.csv")
+            for row in _read_csv(self.data_dir / "accounts" / "accounts.csv")
             if row["customer_id"] == customer_id and row["status"].lower() == "active"
         ]
         account_ids = {row["account_id"] for row in active_accounts}
         totals: defaultdict[str, float] = defaultdict(float)
-        for transaction in _read_csv(self.data_dir / "transactions.csv"):
+        for transaction in _read_csv(self.data_dir / "transactions" / "transactions.csv"):
             if transaction["account_id"] in account_ids:
                 try:
                     totals[transaction["category"].lower()] += float(transaction["amount"])
@@ -75,7 +75,7 @@ class FixtureGateway:
     def list_card_products(self) -> list[CardProduct]:
         products = [
             CardProduct.from_mapping(row)
-            for row in _read_csv(self.data_dir / "card_products.csv")
+            for row in _read_csv(self.data_dir / "card_products" / "card_products.csv")
         ]
         if not products:
             raise GatewayError("card product fixture is empty")

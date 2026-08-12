@@ -71,6 +71,10 @@ endpoints:
     index:
       primary_key:
         - customer_id
+        - age
+        - annual_income
+        - credit_score
+        - risk_band
   - name: card_products
     path: /card_products
     table_name: card_products

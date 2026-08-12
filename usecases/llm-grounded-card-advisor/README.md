@@ -37,10 +37,14 @@ Four small synthetic datasets make the feature derivation inspectable:
 
 | Dataset | Purpose |
 | --- | --- |
-| `customers.csv` | Age, income, credit score, and risk band |
-| `accounts.csv` | Customer/account mapping and active status |
-| `transactions.csv` | Monthly spend by category |
-| `card_products.csv` | Eligibility constraints, fees, and reward factors |
+| `data/customers/customers.csv` | Age, income, credit score, and risk band |
+| `data/accounts/accounts.csv` | Customer/account mapping and active status |
+| `data/transactions/transactions.csv` | Monthly spend by category |
+| `data/card_products/card_products.csv` | Eligibility constraints, fees, and reward factors |
+Each table lives in its own subdirectory (`data/<table>/<table>.csv`) because
+Dozer's `LocalStorage` CSV connector lists a per-table directory rather than a
+flat file. The fixture gateway reads the same directories, so both the offline
+and the Dozer-backed path consume one identical data layout.
 
 `dozer-config.yaml` joins and aggregates the first three datasets. It exposes
 only the two contracts the advisor needs:
@@ -85,22 +89,24 @@ JSON mode are returned as JSON on stderr with exit code `2`.
 
 ## Run with Dozer
 
-Install Dozer using the [official instructions](https://getdozer.io/docs/installation),
-then start it from this directory:
+This sample targets the Dozer v1 config schema, which is supported by release
+[v0.2.1](https://github.com/getdozer/dozer/releases/tag/v0.2.1). Newer
+releases (v0.3.x/v0.4.0) use a different config schema and also require a
+`protoc` binary at runtime, so pin v0.2.1:
 
 ```bash
-dozer run --config-path dozer-config.yaml
-python -m app.cli \
-  --gateway dozer \
-  --dozer-url http://localhost:8080 \
-  --customer-id C001 \
-  --query "travel rewards" \
-  --json
+# Linux/macOS binary from the v0.2.1 release page, then from this directory:
+dozer run --config-path dozer-config.yaml --ignore-pipe
+# ^ --ignore-pipe matters when stdin is not a TTY (CI, nohup); without it
+#   Dozer tries to merge empty stdin as YAML and fails.
+python -m app.cli   --gateway dozer   --dozer-url http://localhost:8080   --customer-id C001   --query "travel rewards"   --json
 ```
 
-Dozer remains the low-latency materialization and API layer. Switching gateways
-does not change eligibility, search, explanation, or output contracts.
-
+A captured end-to-end result (Dozer version, both generated endpoints, and one
+successful CLI call through the Dozer gateway) is committed at
+`demo/dozer-live-smoke-2026-08-12.txt`. Dozer remains the low-latency
+materialization and API layer. Switching gateways does not change eligibility,
+search, explanation, or output contracts.
 ## Deterministic and optional vector search
 
 The default `DeterministicVectorSearch` uses SHA-256 feature hashing and cosine
