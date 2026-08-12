@@ -117,7 +117,11 @@ every change to this sample:
 - `dozer-live-smoke`: starts the pinned Dozer v0.2.1 binary with
   `dozer-config.yaml`, queries both generated endpoints, and runs one
   `--gateway dozer` CLI call with provenance assertions (on PR/push; can be
-  toggled via `workflow_dispatch` input `run_live_smoke`).
+  toggled via `workflow_dispatch` input `run_live_smoke`). The start step
+  retries once before failing (flake guard), and a daily scheduled run
+  (`schedule`, 03:00 UTC) keeps the proof alive against Dozer release drift.
+  Scheduled runs fire on the default branch, so they activate once this
+  workflow is merged to `main`.
 
 ## Deterministic and optional vector search
 

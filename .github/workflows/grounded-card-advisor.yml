@@ -6,6 +6,8 @@ name: Grounded Card Advisor
 # dozer-config.yaml, both generated endpoints queried, one successful
 # `--gateway dozer` CLI call). The smoke job uses the pinned release binary,
 # not a source build, so the review proof stays reproducible and fast.
+# A daily scheduled run keeps the proof alive against Dozer release drift, and the
+# smoke start step retries once before failing (flake guard).
 
 on:
   pull_request:
@@ -24,6 +26,11 @@ on:
         description: "Run the live Dozer smoke test (needs network)"
         type: boolean
         default: true
+  # Daily regression guard: fires against the default branch, so it activates
+  # once this workflow is merged to main. Catches Dozer release/schema drift
+  # that would silently break the pinned v0.2.1 proof.
+  schedule:
+    - cron: "0 3 * * *"
 
 concurrency:
   group: grounded-card-advisor/${{ github.ref }}
@@ -85,20 +92,34 @@ jobs:
           tar xzf /tmp/dozer.tar.gz -C /tmp/dozer-bin
           /tmp/dozer-bin/dozer-linux-amd64/dozer --version
 
-      - name: Start Dozer and wait for REST API
+      - name: Start Dozer and wait for REST API (retry once)
         run: |
-          /tmp/dozer-bin/dozer-linux-amd64/dozer run \
-            --config-path dozer-config.yaml --ignore-pipe > /tmp/dozer-run.log 2>&1 &
-          for i in $(seq 1 60); do
-            if curl -sf -m 3 http://localhost:8080/card_products > /dev/null 2>&1; then
-              echo "Dozer REST API up after ${i}0s"
-              exit 0
+          set -u
+          DOZER=/tmp/dozer-bin/dozer-linux-amd64/dozer
+          start_and_wait() {
+            # kill any leftover instance from a previous attempt
+            pkill -f "dozer-linux-amd64/dozer run" 2>/dev/null || true
+            sleep 2
+            : > /tmp/dozer-run.log
+            "$DOZER" run --config-path dozer-config.yaml --ignore-pipe               > /tmp/dozer-run.log 2>&1 &
+            for i in $(seq 1 30); do
+              if curl -sf -m 3 http://localhost:8080/card_products > /dev/null 2>&1; then
+                echo "Dozer REST API up after $((i * 10))s (attempt $1)"
+                return 0
+              fi
+              sleep 10
+            done
+            echo "Dozer did not become ready within 300s (attempt $1)"
+            tail -20 /tmp/dozer-run.log
+            return 1
+          }
+          if ! start_and_wait 1; then
+            echo "--- retrying once (flake guard) ---"
+            if ! start_and_wait 2; then
+              echo "Dozer failed to start after 2 attempts"
+              exit 1
             fi
-            sleep 10
-          done
-          echo "Dozer did not become ready within 600s"
-          tail -50 /tmp/dozer-run.log
-          exit 1
+          fi
 
       - name: Query both generated endpoints
         run: |
