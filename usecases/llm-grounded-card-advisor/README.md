@@ -107,6 +107,18 @@ successful CLI call through the Dozer gateway) is committed at
 `demo/dozer-live-smoke-2026-08-12.txt`. Dozer remains the low-latency
 materialization and API layer. Switching gateways does not change eligibility,
 search, explanation, or output contracts.
+## Continuous integration
+
+`.github/workflows/grounded-card-advisor.yml` reproduces the full proof on
+every change to this sample:
+
+- `unit-tests`: the 41-test suite, the retrieval evaluation, and a compile
+  check (always).
+- `dozer-live-smoke`: starts the pinned Dozer v0.2.1 binary with
+  `dozer-config.yaml`, queries both generated endpoints, and runs one
+  `--gateway dozer` CLI call with provenance assertions (on PR/push; can be
+  toggled via `workflow_dispatch` input `run_live_smoke`).
+
 ## Deterministic and optional vector search
 
 The default `DeterministicVectorSearch` uses SHA-256 feature hashing and cosine
