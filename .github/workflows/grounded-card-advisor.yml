@@ -117,21 +117,8 @@ jobs:
       - name: Run advisor CLI through the Dozer gateway
         run: |
           set -e
-          python -m app.cli --gateway dozer --dozer-url http://localhost:8080 \
-            --customer-id C001 --query "travel rewards" --json > /tmp/cli-out.json
-          python3 -c "
-            import json
-            d = json.load(open('/tmp/cli-out.json'))
-            assert d['gateway'] == 'dozer', d
-            assert d['recommendations'], 'no recommendations'
-            top = d['recommendations'][0]
-            assert top['product_id'] == 'CARD-TRAVEL', top
-            srcs = {p['source'] for r in d['recommendations'] for p in r['provenance']}
-            assert srcs == {'dozer'}, srcs
-            print('CLI exit 0 | gateway:', d['gateway'], '| top:', top['product_id'],
-                  '| provenance sources:', sorted(srcs))
-          "
-
+          python -m app.cli --gateway dozer --dozer-url http://localhost:8080             --customer-id C001 --query "travel rewards" --json > /tmp/cli-out.json
+          python3 -c "import json; d=json.load(open('/tmp/cli-out.json')); assert d['gateway']=='dozer', d; assert d['recommendations'], 'no recommendations'; top=d['recommendations'][0]; assert top['product_id']=='CARD-TRAVEL', top; srcs={p['source'] for r in d['recommendations'] for p in r['provenance']}; assert srcs=={'dozer'}, srcs; print('CLI exit 0 | gateway:', d['gateway'], '| top:', top['product_id'], '| provenance sources:', sorted(srcs))"
       - name: Upload smoke log
         if: always()
         uses: actions/upload-artifact@v4
